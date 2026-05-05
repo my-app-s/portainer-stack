@@ -1,5 +1,5 @@
 > [!NOTE]
-> # Project Name
+> # Portainer stack
 > ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 > ![License](https://img.shields.io/badge/license-GNU%20AGPLv3-red.svg)
 >
