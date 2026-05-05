@@ -1,0 +1,23 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:${VERSION:-latest}
+    container_name: ${NAME_CONTAINER:-portainer}
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-9000}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data_volume:/data
+    environment:
+      - TZ=UTC
+    networks:
+      - bridge_network
+
+volumes:
+  portainer_data_volume:
+    name: ${NAME_CONTAINER:-portainer}_data_volume
+
+networks:
+  bridge_network:
+    name: portainer_bridge_network
+    driver: bridge
