@@ -66,7 +66,7 @@ services:
 
 ## <a name="env"></a>3. Настройка переменных (Environment Variables)
 > [!IMPORTANT]
-> Перед развертыванием заполните следующие переменные в интерфейсе Portainer or create file .env with variables:
+> Перед развертыванием если это необходимо заполните следующие переменные в интерфейсе Portainer or create file .env with variables:
 
 |Variable|Info|Variable default|
 |-|-|-|
