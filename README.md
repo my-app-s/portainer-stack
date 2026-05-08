@@ -76,6 +76,9 @@ services:
 
 ## <a name="deploy"></a>4. Deploy
 
+> [!IMPORTANT]
+> Важно: После запуска контейнера необходимо перейти в веб-интерфейс Portainer по адресу http://localhost:HOST_PORT и установить пароль администратора.
+
 ```bash
 docker compose up -d
 ```
