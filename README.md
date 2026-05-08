@@ -67,18 +67,15 @@ services:
 ## <a name="env"></a>3. Настройка переменных (Environment Variables)
 
 > [!NOTE]
-> **Подготовка к запуску:** Перед развертыванием склонируйте репозиторий, создайте файл `.env` на основе примера и настройте переменные под свои нужды:
+> **Подготовка к запуску:** Склонируйте репозиторий и создайте файл `.env` на основе примера. Это позволит вам безопасно хранить настройки вне основного конфига:
 > ```bash
 > cp .env.example .env
 
-> [!IMPORTANT]
-> Перед развертыванием если это необходимо заполните следующие переменные в интерфейсе Portainer or create file .env with variables:
-
 |Variable|Info|Variable default|
 |-|-|-|
-|`VERSION`|tag version|`latest`|
-|`NAME_CONTAINER`|name containe and create name volume with this is name|`portainer`|
-|`HOST_PORT`|host post|`9000`|
+|`VERSION`|Версия образа|`latest`|
+|`NAME_CONTAINER`|Имя контейнера и тома для данных|`portainer`|
+|`HOST_PORT`|Порт на хост-машине|`9000`|
 
 ## <a name="deploy"></a>4. Deploy
 
