@@ -3,6 +3,7 @@ services:
     image: portainer/portainer-ce:${VERSION:-latest}
     container_name: ${NAME_CONTAINER:-portainer}
     restart: unless-stopped
+    command: ${TELEMETRY:--no-analytics}
     ports:
       - "${HOST_PORT:-9443}:9443"
     volumes:
