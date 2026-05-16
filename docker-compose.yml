@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:${VERSION_T:-v3.0}
+    image: traefik:${VERSION_T:-latest}
     container_name: traefik
     restart: unless-stopped
     ports:
@@ -10,10 +10,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_certificates:/letsencrypt
     command:
+      #- "--log.level=DEBUG"       # <--- ТЕПЕРЬ ОН БУДЕТ ПИСАТЬ ВСЁ
+      #- "--log.format=common"     # Обычный текстовый формат логов
+
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      # Strict connect to portainer_bridge_network network
+      - "--providers.docker.network=portainer_bridge_network"
+      # Open port 80
       - "--entrypoints.web.address=:80"
+      # Open port 443
       - "--entrypoints.websecure.address=:443"
+      # Redirections with 80 to 443
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
 
       # Настройка резолвера (он просто готов к работе, но не включится без флага CERT_RESOLVER в labels)
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
@@ -26,26 +36,24 @@ services:
     image: portainer/portainer-ce:${VERSION_P:-latest}
     container_name: portainer
     restart: unless-stopped
-    command: ${TELEMETRY:--no-analytics}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data_volume:/data
     environment:
       - TZ=UTC
+      - DO_NOT_TRACK=1
     labels:
       - "traefik.enable=true"
-      
-      # 1. Настройка маршрута (HTTP) для автоматического редиректа на HTTPS
-      - "traefik.http.routers.portainer-http.entrypoints=web"
-      - "traefik.http.routers.portainer-http.rule=Host(`${DOMAIN:-localhost}`)"
-      - "traefik.http.routers.portainer-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.docker.network=portainer_bridge_network"
 
-      # 2. Основной защищенный маршрут (HTTPS)
-      - "traefik.http.routers.portainer-https.entrypoints=websecure"
-      - "traefik.http.routers.portainer-https.rule=Host(`${DOMAIN:-localhost}`)"
-      - "traefik.http.services.portainer-service.loadbalancer.server.port=9000" # Внутренний HTTP-порт Portainer
-      
+      - "traefik.http.routers.portainer.rule=Host(`192.168.100.180`)"
+      #- "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-portainer.local}`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      # самоподписанный SSL
+      - "traefik.http.routers.portainer.tls=true"
+      # Local port in container portainer
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
       # Если в .env переменная CERT_RESOLVER пустая — Traefik выдаст локальный самоподписанный SSL.
       # Если указано CERT_RESOLVER=myresolver — включится Let's Encrypt.
       - "traefik.http.routers.portainer-https.tls.certresolver=${CERT_RESOLVER:-}"
