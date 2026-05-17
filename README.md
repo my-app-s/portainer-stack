@@ -20,7 +20,7 @@ Before using in production, you should:
 
 ---
 
-## 📖 Documentation
+## 📖 Documentation(Документация)
 
 Detailed information is available in separate files:
 
@@ -29,7 +29,7 @@ Detailed information is available in separate files:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start(Быстрый старт)
 
 Start the stack:
 

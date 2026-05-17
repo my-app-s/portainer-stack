@@ -1,47 +1,106 @@
-# 🔒 Архитектурные решения и безопасность (DMZ)
+# 🔒 Architecture & Network Isolation (DMZ)
 
-Этот документ детально описывает сетевую топологию, логику обеспечения безопасности и принципы изоляции компонентов в данном инфраструктурном рецепте.
-
----
-
-## Концепция демилитаризованной зоны (DMZ)
-
-Для минимизации поверхности атаки (Attack Surface) система разделена на два изолированных сетевых контура с разным уровнем доверия и доступа к внешней сети (WAN).
-
-```
-[ ВНЕШНИЙ МИР / ИНТЕРНЕТ ]
-│
-┌─────────┴──────────────────────────────────────────────┐
-│ ПУБЛИЧНЫЙ КОНТУР (taefik_bridge_network)               │
-│                                                        │
-│   [ Traefik Edge Gateway ] (Вход: 80, 443 TCP)        │
-└─────────┬──────────────────────────────────────────────┘
-│
-(Внутренний L7-роутинг)
-▼
-┌────────────────────────────────────────────────────────┐
-│ ИЗОЛИРОВАННЫЙ СЕКТОР (portainer_bridge_network)        │
-│ Флаг: internal: true                                 │
-│                                                        │
-│   🔒 [ Portainer Dashboard ] (Полный WAN-блок)        │
-└────────────────────────────────────────────────────────┘
-```
-
-### Как устроена топология сетей:
-
-- **Публичный контур (`taefik_bridge_network`):**
-   * В этой сети находится исключительно интерфейс шлюза Traefik.
-   * Сеть имеет стандартный доступ в Интернет через NAT-шлюз хоста. Это необходимо для связи с серверами Let's Encrypt (прохождение проверок ACME) и приема входящих HTTPS-запросов от пользователей.
-
-- **Внутренний изолированный сектор (`portainer_bridge_network`):**
-   * Сеть объединяет внутренний интерфейс Traefik и контейнер Portainer для локальной маршрутизации трафика.
-   * Благодаря флагу `internal: true`, Docker-демон принудительно блокирует создание маршрута по умолчанию (Default Gateway) для этой сети в правилах `iptables` хоста.
+This document describes the network topology, isolation model, and security-related design decisions used in this infrastructure template.
 
 ---
 
-## Ключевые фишки безопасности
+## 🧩 Overview
 
-* **Zero Attack Surface (Нулевая видимость):** У контейнера Portainer полностью отсутствует секция `ports:` в манифесте. Порт `9000` не пробрасывается на хост-систему. Веб-интерфейс физически невозможно обнаружить прямым сканированием IP-адреса сервера снаружи. Единственная точка входа — валидный HTTP-запрос к шлюзу Traefik.
-* **Blast Radius Containment (Локализация угроз):** В случае гипотетической компрометации панели Portainer через уязвимость в веб-интерфейсе, атакующий окажется в изолированной «песочнице». Он не сможет загрузить сторонние бэкдоры, скрипты или утилиты из внешней сети, а также не сможет подключить сервер к ботнету — любой исходящий трафик блокируется на уровне ядра Linux.
-* **Privacy by Default (Защита от телеметрии):** Аппаратная блокировка исходящего трафика предотвращает отправку Portainer любой фоновой аналитики, трекеров и скрытой телеметрии разработчикам ПО, обеспечивая полную конфиденциальность развертывания.
-* **Принцип наименьших привилегий для Docker API:** Системный сокет `/var/run/docker.sock` смонтирован в контейнер Traefik в режиме **Read-Only (`:ro`)**. Шлюз может только читать метаданные контейнеров (лейблы) для построения карты маршрутов, но не имеет прав на изменение состояния инфраструктуры хоста.
+The deployment separates components into two Docker networks with different levels of exposure:
+
+- A public network for handling inbound traffic  
+- An internal network for isolating application services  
+
+This design reduces direct exposure of internal services and centralizes access through a single entry point.
+
+---
+
+## 🌐 Network Topology
+
+```
+[ Internet / External Clients ]
+            │
+            ▼
+┌────────────────────────────────────────────┐
+│ Public Network (traefik_bridge_network)    │
+│                                            │
+│   [ Traefik Reverse Proxy ]                │
+│   - Entry points: 80, 443                  │
+└────────────────────┬───────────────────────┘
+                     │
+                     ▼
+┌────────────────────────────────────────────┐
+│ Internal Network (portainer_bridge_network)│
+│ (internal: true)                           │
+│                                            │
+│   [ Portainer Service ]                    │
+│   - No direct host port exposure           │
+└────────────────────────────────────────────┘
+```
+
+---
+
+## 🔐 Network Design
+
+### Public Network (`traefik_bridge_network`)
+- Hosts the Traefik reverse proxy  
+- Accepts incoming HTTP/HTTPS traffic (ports 80, 443)  
+- Provides routing and TLS termination  
+- Has outbound connectivity required for ACME (Let's Encrypt)
+
+---
+
+### Internal Network (`portainer_bridge_network`)
+- Connects Traefik and Portainer for internal routing  
+- Marked as `internal: true`  
+- Containers in this network do not have direct external connectivity by default  
+- Not directly accessible from the host via published ports  
+
+---
+
+## 🔐 Security Properties
+
+- **No Direct Exposure**  
+  Portainer is not published via `ports:` and is not directly accessible from the host network.
+
+- **Centralized Entry Point**  
+  All inbound traffic is handled by Traefik, which acts as the only external interface.
+
+- **Network Isolation**  
+  Internal services run in a Docker network with restricted external connectivity.
+
+- **TLS Termination**  
+  HTTPS is managed at the proxy level (Traefik), including certificate handling (ACME or self-signed).
+
+- **Read-Only Docker Socket**  
+  Traefik uses `/var/run/docker.sock` in read-only mode (`:ro`) for service discovery.
+
+---
+
+## ⚠️ Security Notes
+
+- This setup reduces exposure but does not eliminate all attack vectors  
+- Security depends on correct configuration of:
+  - environment variables  
+  - access credentials  
+  - firewall rules  
+- Additional hardening may be required for production use  
+
+---
+
+## 📌 Design Rationale
+
+The architecture follows common container security practices:
+
+- Separation of concerns (proxy vs application)  
+- Minimization of exposed services  
+- Use of internal networks for service isolation  
+- Controlled access through a single ingress point  
+
+---
+
+## 📎 Limitations
+
+- Does not replace host-level security controls (firewall, kernel hardening)  
+- Does not include authentication or authorization policies by default  
+- Requires proper domain and DNS configuration for ACME to function  
