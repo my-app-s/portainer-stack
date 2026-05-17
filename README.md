@@ -1,36 +1,61 @@
 # 📦 Portainer Stack
 
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/license-GNU%20AGPLv3-red.svg)
 
-> **Infrastructure recipe** for quickly and securely deploying a bundled Edge gateway (Traefik) and Portainer Gateway control panel.
+> Infrastructure template for deploying a container management stack with a reverse proxy and web interface.
 
-This YAML recipe deploys a full-fledged container management stack: the Portainer-CE panel, protected by an isolated reverse proxy server based on Traefik. The gateway automatically handles dynamic traffic routing and SSL certificate generation (Self-Signed / Let's Encrypt ACME).
+This configuration deploys a container management environment based on Portainer CE with a Traefik reverse proxy. It supports automatic routing and SSL certificate management (Self-Signed or Let's Encrypt via ACME).
 
-## 📖 Documentation(Документация)
+---
 
-To prevent overloading the main file, implementation details are moved to separate modules:
+## ⚠️ Production Readiness
 
-* [🔒 Architecture and Security (DMZ)](docs/architecture.md) — about network isolation and protection against hidden telemetry.
-* [⚙️ Complete .env Configuration Reference](docs/configuration.md) — description of environment variables, operating modes (Local/Prod), and flags.
+This setup is intended for development, testing, and home lab environments.
 
-## 🚀 Quick start(Быстрый старт)
+Before using in production, you should:
+- Configure firewall rules (e.g., UFW, iptables)
+- Use strong passwords and secure environment variables
+- Set up regular backups for persistent volumes
+- Review and harden all exposed services
 
-**Launch of the entire infrastructure:**
+---
+
+## 📖 Documentation
+
+Detailed information is available in separate files:
+
+- 🔒 `docs/architecture.md` — network structure and isolation approach  
+- ⚙️ `docs/configuration.md` — environment variables and configuration modes  
+
+---
+
+## 🚀 Quick Start
+
+Start the stack:
 
 ```bash
 docker compose up -d
 ```
 
-**Checking provider status and gateway logs:**
+View logs (Traefik):
 
 ```bash
 docker compose logs traefik -f
 ```
 
-## 🔧 SSL certificate maintenance
+---
 
-If you need to force a reissue of Let's Encrypt certificates (for example, if you change your domain), reset the cache:
+## 🌐 Access
+
+After deployment, services are available via configured domains or the server IP address (depending on your `.env` configuration).
+
+Refer to the configuration documentation for exact endpoints.
+
+---
+
+## 🔧 SSL Certificate Maintenance
+
+To reset Let's Encrypt certificates:
 
 ```bash
 docker compose down
@@ -38,29 +63,28 @@ docker volume rm traefik_certificates
 docker compose up -d
 ```
 
-## ⚠️ Disclaimer / Отказ от ответственности
+---
 
-### English Version
-This project is an **independent development** provided on an **"AS IS"** basis.
+## ⚖️ Disclaimer
 
-* **Liability:** In no event shall the author be liable for any errors, bugs, or data loss arising from the use of this software.
-* **Status:** This is an experimental tool.
+This project is provided **"AS IS"**, without warranty of any kind.
 
-> [!CAUTION]
-> Any use (operation) of this code is at your own risk.
+- The author makes no guarantees regarding reliability, security, or suitability for any purpose  
+- The user is solely responsible for deployment, configuration, and security  
+- Use in production environments is at your own risk  
 
 ---
 
-### Русская версия
-Данный проект является **независимой разработкой** и предоставляется «как есть».
+## 🏷️ Trademarks
 
-* **Ответственность:** Автор не несет ответственности за любые ошибки, баги или потерю данных, возникшие в результате использования данного кода.
-* **Статус:** Это экспериментальный инструмент.
+This project is an independent work and is not affiliated with or endorsed by Docker, Portainer, or Traefik.
 
-> [!CAUTION]
-> Любое использование (эксплуатация) данного кода осуществляется на ваш страх и риск.
+All product names, logos, and brands are the property of their respective owners.
+
+---
 
 ## 📜 License
 
-The project is licensed under the GNU Affero General Public License v3.0 (AGPLv3).
-See [LICENSE](./LICENSE) for details.
+This project is licensed under the GNU Affero General Public License v3.0.
+
+See the `LICENSE` file for details.
