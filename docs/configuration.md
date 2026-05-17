@@ -1,72 +1,108 @@
-# ⚙️ Полный справочник по конфигурации
+# ⚙️ Configuration Reference
 
-Этот документ содержит детальное описание всех конфигурационных параметров, переменных окружения из файла `.env.example` и лейблов Docker Compose, используемых в рецепте.
+This document describes environment variables and Docker Compose parameters used in this deployment template.
 
 ---
 
-## 1. Справочник переменных окружения (`.env`)
+## 🧩 Environment Variables (`.env`)
 
-Поведение стека полностью регулируется файлом `.env`. В шаблоне `.env.example` все параметры по умолчанию закомментированы (`#`), что позволяет Docker Compose использовать дефолтные значения. Для кастомизации раскомментируйте нужные строки.
+All configuration is controlled via the `.env` file.
 
-### 📦 Настройки версий контейнеров (Container Settings)
-| Переменная | Значение по умолчанию | Описание |
+Default values are defined using Docker Compose fallbacks (`${VAR:-default}`).
+Uncomment and adjust variables as needed.
+
+---
+
+### 📦 Container Versions
+
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `VERSION_T` | `latest` | Тег образа для шлюза Traefik. Позволяет зафиксировать конкретную минорную версию при необходимости. |
-| `VERSION_P` | `latest` | Тег образа для панели Portainer-CE. |
+| `VERSION_T` | `latest` | Traefik image tag |
+| `VERSION_P` | `latest` | Portainer CE image tag |
 
-### 🌐 Сетевые настройки и порты (Network & Ports)
-Используются, если стандартные порты `80` или `443` уже заняты другими сервисами на вашем сервере (например, Nginx или Apache).
-| Переменная | Значение по умолчанию | Описание |
+---
+
+### 🌐 Network & Ports
+
+Used when default ports (80, 443) are already occupied.
+
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `FORWARD_PORT_HTTP` | `80` | Внешний порт хоста для приема HTTP-трафика. (Пример кастомизации: `8080`). |
-| `FORWARD_PORT_HTTPS` | `443` | Внешний порт хоста для приема защищенного HTTPS-трафика. (Пример кастомизации: `8443`). |
+| `FORWARD_PORT_HTTP` | `80` | External HTTP port |
+| `FORWARD_PORT_HTTPS` | `443` | External HTTPS port |
 
-### 💻 Режимы работы (Deployment Modes)
+---
 
-| Переменная | Допустимые значения | Описание |
+### 🌍 Deployment Settings
+
+| Variable | Values | Description |
 | :--- | :--- | :--- |
-| `DOMAIN` | IP-адрес, `localhost` или домен (напр., `portainer.local`) | Целевой адрес, по которому будет доступна панель управления. |
-| `CERT_RESOLVER` | Оставить пустой ИЛИ `myresolver` | Модуль генерации SSL. Если пусто — используется самоподписанный TLS шлюза. Если `myresolver` — активируется Let's Encrypt. |
-| `ACME_EMAIL` | Email владельца домена | Используется Let's Encrypt для отправки уведомлений об истечении или проблемах с сертификатами (критично для продакшена). |
+| `DOMAIN` | IP, `localhost`, or domain | Target address for accessing the service |
+| `CERT_RESOLVER` | empty or `myresolver` | TLS mode selector |
+| `ACME_EMAIL` | email | Used by Let's Encrypt for certificate notifications |
 
-### Базовые сценарии использования:
+---
 
-#### Режим А: Локальная разработка / Тесты (Self-Signed)
-Применяется при развертывании внутри локальной сети или на домашнем сервере.
+## 🚀 Deployment Modes
 
-```
+### Local / Testing (Self-Signed TLS)
+
+```env
 DOMAIN=192.168.100.180
 CERT_RESOLVER=
 ```
 
-#### Режим Б: Продакшен (Валидный домен + Let's Encrypt)
-Автоматически запускает TLS-ALPN-01 Challenge для выпуска легитимного SSL-сертификата.
+- Uses self-signed certificates  
+- Suitable for local networks and testing  
 
-```
-DOMAIN=portainer.yourdomain.com
+---
+
+### Production (Domain + Let's Encrypt)
+
+```env
+DOMAIN=portainer.example.com
 CERT_RESOLVER=myresolver
-ACME_EMAIL=devops@yourdomain.com
+ACME_EMAIL=admin@example.com
 ```
 
-## 2. Спецификация параметров Docker Compose
-**Сервис: `traefik` (Edge Gateway)**
+- Requires a valid domain name  
+- Requires ports 80/443 to be publicly accessible  
+- Uses Let's Encrypt (ACME) for TLS certificates  
 
-|Параметр / Флаг|Тип|Назначение|
-|:-|:-|:-|
-|`ports: - ${FORWARD_PORT_HTTP:-80}:80`|Инфраструктурный|Точка входа для HTTP. Автоматически перенаправляет 100% трафика на HTTPS via 301 Redirect.|
-|`ports: - ${FORWARD_PORT_HTTPS:-443}:443`|Инфраструктурный|Точка входа для защищенного HTTPS трафика.|
-|`/var/run/docker.sock`|Volume (ro)|Доступ к Docker API в режиме "только чтение" для динамического обнаружения контейнеров.|
-|`traefik_certificates`|Volume (rw)|Постоянное хранилище для файла `acme.json`, где лежат выпущенные SSL-сертификаты.|
-|`--providers.docker.exposedbydefault=false`|Безопасность|Запрещает Traefik маршрутизировать контейнеры, если у них явно не указан лейбл `traefik.enable=true`.|
-|`--global.checknewversion=false`|Оптимизация|Отключает фоновые запросы телеметрии и проверку обновлений.|
+---
 
-**Сервис: `portainer` (Backend)**
+## 🐳 Docker Compose Parameters
 
-|Лейбл (Label)|Значение|Назначение|
-|:-|:-|:-|
-|`traefik.enable`|`true`|Инструктирует Traefik включить контейнер в дерево маршрутизации.|
-|`traefik.docker.network`|`portainer_bridge_network`|Явно указывает интерфейс для проксирования, если контейнер подключен к нескольким сетям.|
-|`traefik.http.services.portainer.loadbalancer.server.port`|9000|Внутренний HTTP-порт Portainer, на который Traefik шлет проксируемые запросы.|
-|`traefik.http.routers.portainer.rule`|Host(...)|Критерий маршрутизации (L7). Фильтрует входящие запросы по HTTP-заголовку `Host`.|
-|`traefik.http.routers.portainer.tls`|`true`|Активирует TLS-модуль для роутера.|
-|`traefik.http.routers.portainer.tls.certresolver`|`${CERT_RESOLVER:-}`|Динамический резолвер. Если пуст — применяется дефолтный TLS, если равен `myresolver` — задействуется Let's Encrypt.|
+### Service: `traefik`
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| `ports: ${FORWARD_PORT_HTTP:-80}:80` | Infra | HTTP entry point |
+| `ports: ${FORWARD_PORT_HTTPS:-443}:443` | Infra | HTTPS entry point |
+| `/var/run/docker.sock:ro` | Volume | Read-only Docker API access |
+| `traefik_certificates` | Volume | Stores TLS certificates |
+| `--providers.docker.exposedbydefault=false` | Security | Only explicitly enabled containers are exposed |
+| `--global.checknewversion=false` | Config | Disables automatic version checks |
+
+---
+
+### Service: `portainer`
+
+| Label | Value | Description |
+| :--- | :--- | :--- |
+| `traefik.enable` | `true` | Enables routing |
+| `traefik.docker.network` | `portainer_bridge_network` | Network used for routing |
+| `traefik.http.services.portainer.loadbalancer.server.port` | `9000` | Internal service port |
+| `traefik.http.routers.portainer.rule` | `Host(...)` | Routing rule |
+| `traefik.http.routers.portainer.tls` | `true` | Enables TLS |
+| `traefik.http.routers.portainer.tls.certresolver` | `${CERT_RESOLVER}` | TLS resolver |
+
+---
+
+## ⚠️ Notes
+
+- Let's Encrypt requires a valid domain name (not IP or localhost)  
+- `CERT_RESOLVER` must match the resolver defined in Traefik configuration  
+- Security depends on correct configuration of credentials and environment variables  
+
+---
