@@ -24,8 +24,8 @@ Before using in production, you should:
 
 Detailed information is available in separate files:
 
-- 🔒 `docs/architecture.md` — network structure and isolation approach  
-- ⚙️ `docs/configuration.md` — environment variables and configuration modes  
+- 🔒 [docs/architecture.md](./docs/architecture.md) — network structure and isolation approach  
+- ⚙️ [docs/configuration.md](./docs/configuration.md) — environment variables and configuration modes  
 
 ---
 
