@@ -64,5 +64,5 @@ networks:
     driver: bridge
     internal: true
   bridge_network:
-    name: taefik_bridge_network
+    name: traefik_bridge_network
     driver: bridge
