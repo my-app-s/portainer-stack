@@ -1,94 +1,245 @@
-## Глобальная архитектура маршрутизации проектов
+# Глобальная архитектура маршрутизации проектов (Traefik + Docker)
 
-Документ описывает логику взаимодействия независимых Docker-стеков с главным шлюзом **Traefik**.
+## Архитектура
 
-## 🧱 Архитектурная концепция
-Система построена на принципе **Service Discovery**.  
-Traefik слушает системный сокет Docker и автоматически создает маршруты и SSL-сертификаты для контейнеров с корректными метками (labels).
+Принцип: **Service Discovery через Docker socket**
+
+Traefik:
+- читает Docker socket
+- автоматически создает:
+  - routers
+  - services
+  - TLS (Let's Encrypt при наличии resolver)
+
+Схема:
 
 ```
-[ ИНТЕРНЕТ (Порты 80 / 443 TCP) ]
-│
-▼
-[ РОУТЕР HUAWEI (Проброс на сервер) ]
-│
-▼
-┌─────────────────────────────────────────────┐
-│          ГЛАВНЫЙ СТЭК ИНФРАСТРУКТУРЫ        │
-│  [Контейнер Traefik] (Слушает сокет Docker) │
-└──────────────────────┬──────────────────────┘
-│
-┌───────────────┴─────────────────────┐
-▼ (traefik_bridge_network)
-│
-├─► [Стек 1: Portainer] ──► portainer.yourdomain.net
-├─► [Стек 2: Сайт] ───────► site.yourdomain.net
-└─► [Стек 3: Бот] ────────► bot.yourdomain.net
+
+Internet (80/443)
+↓
+Router (NAT)
+↓
+Traefik (Docker provider)
+↓
+traefik_public_network
+↓
+[containers with labels]
+
 ```
 
-## 📑 Инструкция: запуск нового проекта в 3 шага
+---
 
-### Шаг 1. Создай папку проекта
+## Запуск нового проекта
+
+### 1. Создание директории
 
 ```bash
-mkdir -p /projects/my-new-website
-cd /projects/my-new-website
-nano docker-compose.yml
+mkdir -p /projects/<project>
+cd /projects/<project>
 ```
-### Шаг 2. Заполни docker-compose.yml по шаблону
+
+---
+
+### 2. docker-compose.yml
 
 ```yaml
 services:
-  my-app-service:
+  app:
     image: nginx:alpine
-    container_name: my-new-website # ⚠️ use as router in lables traefik
+    container_name: <project>
+
     restart: unless-stopped
+
     networks:
-      - traefik_public_network # ⚠️ Name network traefik
+      - traefik_public_network
+
     labels:
-      - "traefik.enable=true" # enable traefik
+      - "traefik.enable=true"
 
-      # Base configure router
-      # Use exactly one name router: my-new-website
-      # Используем строго ОДНО имя роутера: my-new-website
-      - "traefik.http.routers.my-new-website.rule=Host(`${DOMAIN:-}`)" # ⚠️ Set access address host
-      - "traefik.http.routers.my-new-website.entrypoints=websecure" # Set access port public
-      # Use default port app
-      # Исправили порт на 80 (родной порт для Nginx)
-      - "traefik.http.services.my-new-website.loadbalancer.server.port=80" # ⚠️ Set access port local app
+      # router
+      - "traefik.http.routers.<project>.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.<project>.entrypoints=websecure"
 
-      # ⚠️ Если указано CERT_RESOLVER=myresolver — включится Let's Encrypt.
-      # Traefik генерирует self-signed сертификат для этого роутера.
-      # Enable TLS and connect to only router my-new-website
-      # Включаем TLS и привязываем резолвер К ЭТОМУ ЖЕ роутеру
-      - "traefik.http.routers.my-new-website.tls=true" # enable TLS
-      - "traefik.http.routers.my-new-website.tls.certresolver=${CERT_RESOLVER:-}"
+      # service
+      - "traefik.http.services.<project>.loadbalancer.server.port=80"
+
+      # TLS
+      - "traefik.http.routers.<project>.tls=true"
+      - "traefik.http.routers.<project>.tls.certresolver=${CERT_RESOLVER}"
+
 networks:
   traefik_public_network:
     external: true
 ```
 
-### Шаг 3. Запусти проект
+---
+
+### 3. Запуск
 
 ```bash
 docker compose up -d
 ```
 
-## 🚨 Золотые правила
+---
 
-- Уникальность имен  
-    - Имена роутеров и сервисов в labels должны быть уникальными.
-        - Пример: my-site-router, telegram-bot-router, crm-router.
-- Запрет секции ports  
-    - Не использовать ports: в docker-compose.yml.
-        - Порты 80/443 заняты Traefik, конфликт приведет к ошибке.
-- Один порт внутри  
-    - Допустимо указывать одинаковый порт (например, 80) в разных проектах.
-        - Traefik маршрутизирует запросы по доменному имени.
+## Правила
 
-## ✅ Итог
+### Имена
 
-Архитектура обеспечивает:
-- Чистоту сервера: инфраструктура и проекты разделены.
-- Автоматическую маршрутизацию и SSL.
-- Простоту запуска новых сервисов без изменения главного стека.
+* router = уникальный
+* service = уникальный
+* container_name = совпадает с router
+
+---
+
+### Ports
+
+* **НЕ использовать `ports:`**
+* 80/443 принадлежат Traefik
+
+---
+
+### Сеть
+
+* всегда:
+
+  ```yaml
+  networks:
+    - traefik_public_network
+  ```
+
+---
+
+### Порт приложения
+
+* указывается только внутренний:
+
+  ```yaml
+  loadbalancer.server.port=<port>
+  ```
+
+---
+
+## Traefik (инфраструктура)
+
+```yaml
+services:
+  traefik:
+    image: traefik:${VERSION_T:-latest}
+    container_name: traefik
+
+    restart: unless-stopped
+
+    ports:
+      - "${FORWARD_PORT_HTTP:-80}:80"
+      - "${FORWARD_PORT_HTTPS:-443}:443"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certificates:/letsencrypt
+
+    command:
+      - "--log.level=INFO"
+      - "--log.format=common"
+
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik_public_network"
+
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+
+      # ACME
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+    networks:
+      - traefik_local_network
+      - traefik_public_network
+```
+
+---
+
+## Portainer (пример сервиса)
+
+```yaml
+  portainer:
+    image: portainer/portainer-ce:${VERSION_P:-latest}
+    container_name: portainer
+
+    restart: unless-stopped
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data_volume:/data
+
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.portainer.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+      - "traefik.http.routers.portainer.tls=true"
+      - "traefik.http.routers.portainer.tls.certresolver=${CERT_RESOLVER}"
+
+    networks:
+      - traefik_local_network
+```
+
+---
+
+## Сети
+
+```yaml
+networks:
+  traefik_local_network:
+    internal: true
+
+  traefik_public_network:
+    external: true
+```
+
+---
+
+## Volumes
+
+```yaml
+volumes:
+  traefik_certificates:
+  portainer_data_volume:
+```
+
+---
+
+## Переменные окружения
+
+| Переменная    | Назначение             |
+| ------------- | ---------------------- |
+| DOMAIN        | домен сервиса          |
+| CERT_RESOLVER | включает Let's Encrypt |
+| ACME_EMAIL    | email для ACME         |
+| VERSION_T     | версия Traefik         |
+| VERSION_P     | версия Portainer       |
+
+---
+
+## Поведение TLS
+
+* `tls=true` → HTTPS включен
+* `certresolver` задан → используется Let's Encrypt
+* `certresolver` пуст → self-signed сертификат Traefik
+
+---
+
+## Итог
+
+* маршрутизация по Host()
+* один публичный вход: Traefik
+* изоляция через сети
+* масштабирование без изменения инфраструктуры
