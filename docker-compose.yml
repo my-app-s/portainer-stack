@@ -25,8 +25,7 @@ services:
       - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL:-admin@localhost.local}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     networks:
-      - local_network
-      - public_network
+      - network_stack
 
   portainer:
     image: portainer/portainer-ce:${VERSION_P:-latest}
@@ -43,9 +42,9 @@ services:
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
       - "traefik.http.routers.portainer.tls=true"
-      - "traefik.http.routers.portainer-https.tls.certresolver=${CERT_RESOLVER:-}"
+      - "traefik.http.routers.portainer.tls.certresolver=${CERT_RESOLVER:-}"
     networks:
-      - local_network
+      - network_stack
 
 volumes:
   portainer_data_volume:
@@ -54,8 +53,5 @@ volumes:
     name: traefik_certificates
 
 networks:
-  local_network:
-    name: traefik_local_network
-    internal: true
-  public_network:
+  network_stack:
     name: traefik_public_network
