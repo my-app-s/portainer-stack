@@ -40,6 +40,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-}`)"
       - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       - "traefik.http.services.portainer.loadbalancer.server.port=9443"
       - "traefik.http.routers.portainer.tls=true"
       - "traefik.http.routers.portainer.tls.certresolver=${CERT_RESOLVER:-}"
