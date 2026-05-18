@@ -4,24 +4,23 @@ services:
     container_name: traefik
     restart: unless-stopped
     ports:
-      - "${FORWARD_PORT_HTTP:-80}:80"       # Для перенаправления HTTP -> HTTPS
-      - "${FORWARD_PORT_HTTPS:-443}:443"     # Внешний защищенный порт для входа в Portainer
+      - "${FORWARD_PORT_HTTP:-80}:80"
+      - "${FORWARD_PORT_HTTPS:-443}:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_certificates:/letsencrypt
     command:
-      - "--log.level=INFO" # <--- ТЕПЕРЬ ОН БУДЕТ ПИСАТЬ ВСЁ
-      - "--log.format=common" # Обычный текстовый формат логов
+      - "--log.level=INFO"
+      - "--log.format=common"
       - "--global.checknewversion=false"
       - "--global.sendanonymoususage=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=traefik_public_network" # Strict connect network
-      - "--entrypoints.web.address=:80" # Open port 80
-      - "--entrypoints.websecure.address=:443" # Open port 443
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure" # Redirections with 80 to 443
+      - "--providers.docker.network=traefik_public_network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      # Настройка резолвера (он просто готов к работе, но не включится без флага CERT_RESOLVER в labels)
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL:-admin@localhost.local}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
@@ -39,14 +38,11 @@ services:
     environment:
       - TZ=UTC
     labels:
-      - "traefik.enable=true" # enable traefik
-      # Base configure router
-      - "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-}`)" # Set access address host
-      - "traefik.http.routers.portainer.entrypoints=websecure" # Set access port public
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000" # Set access port local app
-      # Если указано CERT_RESOLVER=myresolver — включится Let's Encrypt.
-      # Traefik генерирует self-signed сертификат для этого роутера.
-      - "traefik.http.routers.portainer.tls=true" # enable TLS
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-}`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.routers.portainer.tls=true"
       - "traefik.http.routers.portainer-https.tls.certresolver=${CERT_RESOLVER:-}"
     networks:
       - local_network
