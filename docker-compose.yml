@@ -16,7 +16,7 @@ services:
       - "--global.sendanonymoususage=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=portainer_bridge_network" # Strict connect network
+      - "--providers.docker.network=traefik_public_network" # Strict connect network
       - "--entrypoints.web.address=:80" # Open port 80
       - "--entrypoints.websecure.address=:443" # Open port 443
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure" # Redirections with 80 to 443
@@ -27,7 +27,7 @@ services:
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     networks:
       - local_network
-      - bridge_network
+      - public_network
 
   portainer:
     image: portainer/portainer-ce:${VERSION_P:-latest}
@@ -40,7 +40,7 @@ services:
       - TZ=UTC
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=portainer_bridge_network"
+      - "traefik.docker.network=traefik_public_network"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000" # Local port in container portainer
       # Base configure router
       - "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-}`)" # Set host for access address
@@ -60,7 +60,6 @@ volumes:
 
 networks:
   local_network:
-    name: traefik_local_network
     internal: true
-  bridge_network:
+  public_network:
     name: traefik_public_network
