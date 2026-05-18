@@ -60,9 +60,7 @@ volumes:
 
 networks:
   local_network:
-    name: portainer_bridge_network
-    driver: bridge
+    name: traefik_local_network
     internal: true
   bridge_network:
-    name: traefik_bridge_network
-    driver: bridge
+    name: traefik_public_network
