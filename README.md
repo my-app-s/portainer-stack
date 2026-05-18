@@ -65,13 +65,13 @@ docker compose up -d
 
 ---
 
-## ⚖️ Disclaimer
+## 📜 Disclaimer
 
-This project is provided **"AS IS"**, without warranty of any kind.
+**English**: Materials are provided ***as is*** under the LICENSE file. No warranties, no rights granted unless explicitly stated. Authors are not liable for damages. No partnership or obligations created.  
 
-- The author makes no guarantees regarding reliability, security, or suitability for any purpose  
-- The user is solely responsible for deployment, configuration, and security  
-- Use in production environments is at your own risk  
+**Русский**: Материалы предоставляются ***как есть*** и регулируются LICENSE. Гарантий нет, права не передаются без явного указания. Автор(ы) не несут ответственности. Партнёрство или обязательства не создаются.  
+
+📌 See full disclaimer in [DISCLAIMER.md](https://github.com/my-app-s/my-app-s/blob/main/DISCLAIMER.md)
 
 ---
 
