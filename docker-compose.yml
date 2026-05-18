@@ -39,15 +39,14 @@ services:
     environment:
       - TZ=UTC
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik_public_network"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000" # Local port in container portainer
+      - "traefik.enable=true" # enable traefik
       # Base configure router
-      - "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-}`)" # Set host for access address
-      - "traefik.http.routers.portainer.entrypoints=websecure" # Set host for access port
+      - "traefik.http.routers.portainer.rule=Host(`${DOMAIN:-}`)" # Set access address host
+      - "traefik.http.routers.portainer.entrypoints=websecure" # Set access port public
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000" # Set access port local app
       # Если указано CERT_RESOLVER=myresolver — включится Let's Encrypt.
       # Traefik генерирует self-signed сертификат для этого роутера.
-      - "traefik.http.routers.portainer.tls=true" # самоподписанный SSL
+      - "traefik.http.routers.portainer.tls=true" # enable TLS
       - "traefik.http.routers.portainer-https.tls.certresolver=${CERT_RESOLVER:-}"
     networks:
       - local_network
@@ -60,6 +59,7 @@ volumes:
 
 networks:
   local_network:
+    name: traefik_local_network
     internal: true
   public_network:
     name: traefik_public_network
