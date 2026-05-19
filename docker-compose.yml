@@ -12,6 +12,8 @@ services:
     command:
       - "--log.level=INFO"
       - "--log.format=common"
+      - "--accesslog=true" # Включает логи доступа
+      - "--accesslog.format=json" # Опционально
       - "--global.checknewversion=false"
       - "--global.sendanonymoususage=false"
       - "--providers.docker=true"
